@@ -1,0 +1,16 @@
+# 운영 + Postgres
+docker build --target prod --build-arg DB_BACKENDS=postgres -t myapp:prod-pg .
+
+# 운영 + MySQL
+docker build --target prod --build-arg DB_BACKENDS=mysql -t myapp:prod-mysql .
+
+# 운영 + Postgres + MySQL
+docker build --target prod --build-arg DB_BACKENDS=postgres,mysql -t myapp:prod-both .
+
+# 다중 백엔드(예: Postgres + Mysql)
+docker build --target prod --build-arg DB_BACKENDS=postgres,mysql -t myapp:pg-mysql .
+
+# 개발 + MongoDB
+docker build --target dev --build-arg DB_BACKENDS=mongo -t myapp:dev-mongo .
+
+
