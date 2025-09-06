@@ -22,4 +22,4 @@ pip install -r requirements.txt
 - 멀티테넌트 적용(api에 테넌트 info 추가하여 별도 관리)
 
 ## 🛠 pytest 실험
-python -q
+- 멀티테넌트 pytest 진행(TenantMiddleware,IdempotencyMiddleware)
