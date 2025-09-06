@@ -8,7 +8,12 @@ class TestTenantMiddleware:
     def test_header_sets_tenant(self, rf, tenant):
         from core.middleware import TenantMiddleware
         req = rf.get("/anything", HTTP_X_TENANT_ID=tenant.code)
+        print("(1)")
+        print(tenant)
+        print(tenant.code)
         mw = TenantMiddleware(lambda r: JsonResponse({"ok": True}))
+        print(mw)
+        print("(2)")
         # process_request 만 호출해도 됨. __call__ 경유해도 무방
         mw.process_request(req)
         assert getattr(req, "tenant", None) == tenant

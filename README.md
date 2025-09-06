@@ -22,4 +22,10 @@ pip install -r requirements.txt
 - 멀티테넌트 적용(api에 테넌트 info 추가하여 별도 관리)
 
 ## 🛠 pytest 실험
+```bash
+# 1) pytest -q : pytest.ini에 따라 test로 시작하는 python파일 모두 실행
+pytest -q
+# 2) pytest -s : test로 시작하는 python파일에서 print 확인하는 방법
+pytest -s
+```
 - 멀티테넌트 pytest 진행(TenantMiddleware,IdempotencyMiddleware)
