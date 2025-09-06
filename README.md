@@ -20,3 +20,6 @@ pip install -r requirements.txt
 
 ## ✨ 기능 요약
 - 멀티테넌트 적용(api에 테넌트 info 추가하여 별도 관리)
+
+## 🛠 pytest 실험
+python -q
