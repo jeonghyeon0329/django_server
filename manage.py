@@ -20,4 +20,5 @@ def main():
 
 if __name__ == '__main__':
     # 관리자를 추가하는 방법 : python manage.py createsuperuser
+    # gunicorn config.wsgi:application --workers 4 --bind 0.0.0.0:8000
     main()

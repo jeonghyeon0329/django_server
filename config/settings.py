@@ -54,6 +54,14 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',    
 ]
 
+## Middleware에서 검사하는 url 예외 생성
+TENANT_EXEMPT_PATHS = [
+    r"^/admin/",
+    # r"^/static/",
+    # r"^/media/",
+    r"^/health/?$",
+]
+
 ## post api가 OPTIONS에서 종료되는 현상 방지
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [

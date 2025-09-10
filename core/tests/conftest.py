@@ -12,4 +12,4 @@ def rf():
 @pytest.fixture
 def tenant(db):
     from core.models import Tenant
-    return Tenant.objects.create(code="acme", name="ACME Inc.")
+    return Tenant.objects.create(code="kyle", name="KYLE Inc.")
