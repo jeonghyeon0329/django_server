@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from django.db import transaction
 from django.conf import settings
+from django.utils.text import slugify
 from .models import Tenant, IdempotencyKey
 import re
 
@@ -11,7 +12,7 @@ EXEMPT_PATTERNS = [re.compile(p) for p in getattr(settings, "TENANT_EXEMPT_PATHS
 def _is_exempt(path: str) -> bool:
     return any(p.match(path) for p in EXEMPT_PATTERNS)
 
-class TenantMiddleware(MiddlewareMixin):
+class TenantMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -19,10 +20,11 @@ class TenantMiddleware(MiddlewareMixin):
         if _is_exempt(request.path_info):
             return self.get_response(request)
         
-        code = (request.headers.get('X-Tenant-ID')
-                or request.GET.get('tenant')
-                or request.POST.get('tenant'))
-        code = code.strip() if code else None
+        raw = (request.headers.get(getattr(settings, "TENANT_HEADER_NAME", "X-Tenant-ID"))
+               or (request.GET.get("tenant") if getattr(settings, "TENANT_ALLOW_QUERY_PARAM", False) else None)
+               or (request.POST.get("tenant") if getattr(settings, "TENANT_ALLOW_QUERY_PARAM", False) else None))
+    
+        code = raw.strip() if raw else None
 
         if not code:
             return JsonResponse(
@@ -30,25 +32,24 @@ class TenantMiddleware(MiddlewareMixin):
                 status=400
             )
 
+        else: 
+            norm = slugify(code) 
+            if norm != code:
+                return JsonResponse(
+                    {"detail": "Invalid tenant code format."}, 
+                    status=400
+                )
+            code = norm
+
         tenant = Tenant.objects.filter(code=code).first()
         if not tenant:
             return JsonResponse(
-                {"detail": f"Tenant not found for code={code}"},
+                {"detail": f"Access denied."},
                 status=404
             )
 
         request.tenant = tenant
         return self.get_response(request)
-    
-    def process_request(self, request):
-        code = request.headers.get('X-Tenant-ID') or request.GET.get('tenant')
-        request.tenant = None
-        if code:
-            try:
-                request.tenant = Tenant.objects.get(code=code.strip())
-            except Tenant.MultipleObjectsReturned:
-                print(f"[TenantMiddleware] multiple tenants for code={code!r}")
-                request.tenant = None
 
 class IdempotencyMiddleware(MiddlewareMixin):
     SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}

@@ -10,7 +10,8 @@ class TestTenantMiddleware:
         from core.middleware import TenantMiddleware
         req = rf.get("/anything", HTTP_X_TENANT_ID=tenant.code)
         mw = TenantMiddleware(lambda r: JsonResponse({"ok": True}))
-        mw.process_request(req)
+        resp = mw(req)
+        assert resp.status_code == 200
         assert getattr(req, "tenant", None) == tenant
 
     ## tenant 쿼리 검증
@@ -18,8 +19,8 @@ class TestTenantMiddleware:
         from core.middleware import TenantMiddleware
         req = rf.get(f"/anything?tenant={tenant.code}")
         mw = TenantMiddleware(lambda r: JsonResponse({"ok": True}))
-        mw.process_request(req)
-        assert req.tenant == tenant
+        resp = mw(req)
+        assert resp.status_code == 400
 
     ## tenant 정보 찾을 수 없음
     def test_unknown_tenant_keeps_none(self, rf):
