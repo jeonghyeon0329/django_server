@@ -28,4 +28,10 @@ pytest -q
 # 2) pytest -s : test로 시작하는 python파일에서 print 확인하는 방법
 pytest -s
 ```
-- 멀티테넌트 pytest 진행(TenantMiddleware,IdempotencyMiddleware)
+
+## 🛠 멀티테넌트 생성 방법
+```bash
+http://localhost:8000/admin/ 추가(테넌트: 추가)
+```
+
+
