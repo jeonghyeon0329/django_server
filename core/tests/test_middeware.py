@@ -5,6 +5,7 @@ from django.http import JsonResponse
 
 @pytest.mark.django_db
 class TestTenantMiddleware:
+    ## tenant 헤더 검증
     def test_header_sets_tenant(self, rf, tenant):
         from core.middleware import TenantMiddleware
         req = rf.get("/anything", HTTP_X_TENANT_ID=tenant.code)
@@ -12,19 +13,21 @@ class TestTenantMiddleware:
         mw.process_request(req)
         assert getattr(req, "tenant", None) == tenant
 
-    # def test_query_param_sets_tenant(self, rf, tenant):
-    #     from core.middleware import TenantMiddleware
-    #     req = rf.get(f"/anything?tenant={tenant.code}")
-    #     mw = TenantMiddleware(lambda r: JsonResponse({"ok": True}))
-    #     mw.process_request(req)
-    #     assert req.tenant == tenant
+    ## tenant 쿼리 검증
+    def test_query_param_sets_tenant(self, rf, tenant):
+        from core.middleware import TenantMiddleware
+        req = rf.get(f"/anything?tenant={tenant.code}")
+        mw = TenantMiddleware(lambda r: JsonResponse({"ok": True}))
+        mw.process_request(req)
+        assert req.tenant == tenant
 
-    # def test_unknown_tenant_keeps_none(self, rf):
-    #     from core.middleware import TenantMiddleware
-    #     req = rf.get("/anything", HTTP_X_TENANT_ID="no-such")
-    #     mw = TenantMiddleware(lambda r: JsonResponse({"ok": True}))
-    #     mw.process_request(req)
-    #     assert getattr(req, "tenant", None) is None
+    ## tenant 정보 찾을 수 없음
+    def test_unknown_tenant_keeps_none(self, rf):
+        from core.middleware import TenantMiddleware
+        req = rf.get("/anything", HTTP_X_TENANT_ID="no-such")
+        mw = TenantMiddleware(lambda r: JsonResponse({"ok": True}))
+        resp = mw(req)        
+        assert resp.status_code == 404
 
 
 # @pytest.mark.django_db

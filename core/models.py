@@ -109,7 +109,7 @@ class IdempotencyKey(models.Model):
             # status_code는 0(미정) 또는 100~599 범위 허용
             models.CheckConstraint(
                 name="idemp_status_code_valid",
-                check=(
+                condition=(
                     models.Q(status_code=0) |
                     (models.Q(status_code__gte=100) & models.Q(status_code__lte=599))
                 ),

@@ -26,7 +26,7 @@ class TenantMiddleware(MiddlewareMixin):
 
         if not code:
             return JsonResponse(
-                {"detail": "X-Tenant-ID header (or ?tenant=) is required."},
+                {"detail": "X-Tenant-ID is required."},
                 status=400
             )
 
@@ -42,8 +42,6 @@ class TenantMiddleware(MiddlewareMixin):
     
     def process_request(self, request):
         code = request.headers.get('X-Tenant-ID') or request.GET.get('tenant')
-        print("(1)")
-        print(code)
         request.tenant = None
         if code:
             try:
