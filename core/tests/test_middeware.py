@@ -51,6 +51,9 @@ class TestIdempotencyMiddleware:
         return IdempotencyMiddleware(view), calls
 
     def test_post_with_same_key_and_body_uses_cached_response(self, rf, db):
+        """
+            API를 2번 호출했을때 COUNT가 변화하는지 검사한다.
+        """
         from core.models import IdempotencyKey
         mw, calls = self._mw_with_counting_view()
 

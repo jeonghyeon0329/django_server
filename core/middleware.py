@@ -1,7 +1,7 @@
 import hashlib, json
 from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.conf import settings
 from django.utils.text import slugify
 from .models import Tenant, IdempotencyKey
@@ -52,57 +52,88 @@ class TenantMiddleware:
         return self.get_response(request)
 
 class IdempotencyMiddleware(MiddlewareMixin):
-    ## 멱등성이 보장되는 Methods
-    SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
+    SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'} ## 멱등성이 보장되는 Methods
 
     def process_request(self, request):
         if request.method in self.SAFE_METHODS:
             return None
         
-        key = request.headers.get('Idempotency-Key')
-        if not key:
-            return JsonResponse(
-                {"detail": "Idempotency-Key header is required."},
-                status=400
-            )
-        ## 동일 key를 가짐에도 불구하고 body가 다르면 다른 요청으로 처리
-        body_hash = hashlib.sha256(request.body or b'').hexdigest()
-    
-        existing = IdempotencyKey.objects.filter(key=key).first()
-        if existing and existing.request_hash != body_hash:
-            return JsonResponse(
-                {"detail": "Idempotency-Key reuse with different request body."},
-                status=409
-            )
-        elif existing and existing.request_hash == body_hash:
-            try:
-                data = json.loads(existing.response_body)
-            except Exception:
-                data = {'detail': 'OK'}
-            return JsonResponse(data, status=existing.status_code, safe=isinstance(data, dict))
+        try:
+            key = request.headers.get('Idempotency-Key')
+            if not key:
+                return JsonResponse(
+                    {"detail": "Idempotency-Key header is required."},
+                    status=400
+                )
+            ## 동일 key를 가짐에도 불구하고 body가 다르면 다른 요청으로 처리
+            body_hash = hashlib.sha256(request.body or b'').hexdigest()
         
-        else:
+            existing = IdempotencyKey.objects.filter(key=key).first()
+            if existing and existing.request_hash != body_hash:
+                return JsonResponse(
+                    {"detail": "Idempotency-Key reuse with different request body."},
+                    status=409
+                )
+            if existing and existing.status_code and existing.request_hash == body_hash:
+                request._idemp_cache_hit = True
+                try:
+                    data = json.loads(existing.response_body)
+                except Exception:
+                    data = {'detail': 'OK'}
+                return JsonResponse(data, status=existing.status_code, safe=isinstance(data, dict))
+
+            request._idemp_body_hash = body_hash
             return None
+
+        except Exception as e:
+            return JsonResponse(
+                    {"detail": "internal server error(idempotency)"},
+                    status=500
+                )
+            
 
     def process_response(self, request, response):
         try:
-            if request.method not in self.SAFE_METHODS:
-                key = request.headers.get('Idempotency-Key')
-                if key and hasattr(request, 'body'):
-                    body_hash = hashlib.sha256(request.body or b'').hexdigest()
-                    with transaction.atomic():
+            if request.method in self.SAFE_METHODS:
+                return response
+            
+            key = request.headers.get('Idempotency-Key')
+            if not key :
+                return response
+            
+            # 이미 캐시로 응답한 경우
+            if getattr(request, "_idemp_cache_hit", False):
+                return response
+
+            if 400 <= getattr(response, "status_code", 200) <= 599:
+                return response
+
+            body_hash = getattr(request, "_idemp_body_hash", None)
+            if not body_hash:
+                body_hash = hashlib.sha256(request.body or b'').hexdigest()
+                with transaction.atomic():
+                    try:
                         obj, _ = IdempotencyKey.objects.get_or_create(
                             key=key, request_hash=body_hash
                         )
-                        # Only store JSON responses
-                        if hasattr(response, 'content'):
-                            try:
-                                payload = response.content.decode('utf-8')
-                            except Exception:
-                                payload = ''
-                            obj.response_body = payload
-                            obj.status_code = response.status_code
-                            obj.save()
+                    except IntegrityError:
+                        obj = IdempotencyKey.objects.select_for_update().get(key=key)
+
+                    # Only store JSON responses
+                    if hasattr(response, 'content'):
+                        try:
+                            payload = response.content.decode('utf-8')
+                        except Exception:
+                            payload = ''
+
+                        obj.request_hash = body_hash
+                        obj.response_body = payload
+                        obj.status_code = response.status_code
+                        obj.save()
         except Exception:
-            print("idempotency persistence failed")
+            """
+                TODO logger 추가
+                logger.exception("Idempotency persistence failed: %s", e)
+            """
+            pass
         return response
