@@ -18,20 +18,16 @@ source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## ✨ 기능 요약
-- 멀티테넌트 적용(api에 테넌트 info 추가하여 별도 관리)
+✨ 주요 기능
 
-## 🛠 pytest 실험
-```bash
-# 1) pytest -q : pytest.ini에 따라 test로 시작하는 python파일 모두 실행
-pytest -q
-# 2) pytest -s : test로 시작하는 python파일에서 print 확인하는 방법
-pytest -s
-```
+멀티 테넌시(Multi-Tenancy)
+- 요청 헤더의 테넌트 식별자(X-Tenant-ID)를 통해 데이터/권한을 분리
+- 예외 경로 설정(TENANT_EXEMPT_PATHS)로 특정 엔드포인트는 테넌트 검증 스킵 가능
 
-## 🛠 멀티테넌트 생성 방법
-```bash
-http://localhost:8000/admin/ 추가(테넌트: 추가)
-```
+멱등성(Idempotency) 미들웨어
+- Idempotency-Key 헤더를 통해 중복 요청 방지/응답 재사용
+- 4xx~5xx 응답은 캐시하지 않음
+- TTL(예: 60초) 이후 캐시 무효화(옵션)
 
-
+pytest 기반 테스트
+- 미들웨어 동작 및 회귀 테스트
