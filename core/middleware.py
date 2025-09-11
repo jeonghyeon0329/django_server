@@ -94,42 +94,17 @@ class IdempotencyMiddleware(MiddlewareMixin):
 
     def process_response(self, request, response):
         try:
-            if request.method in self.SAFE_METHODS:
-                return response
-            
-            key = request.headers.get('Idempotency-Key')
-            if not key :
-                return response
-            
-            # 이미 캐시로 응답한 경우
-            if getattr(request, "_idemp_cache_hit", False):
-                return response
-
-            if 400 <= getattr(response, "status_code", 200) <= 599:
-                return response
-
-            body_hash = getattr(request, "_idemp_body_hash", None)
-            if not body_hash:
-                body_hash = hashlib.sha256(request.body or b'').hexdigest()
-                with transaction.atomic():
-                    try:
-                        obj, _ = IdempotencyKey.objects.get_or_create(
-                            key=key, request_hash=body_hash
-                        )
-                    except IntegrityError:
-                        obj = IdempotencyKey.objects.select_for_update().get(key=key)
-
-                    # Only store JSON responses
-                    if hasattr(response, 'content'):
-                        try:
+            if request.method not in self.SAFE_METHODS:
+                key = request.headers.get('Idempotency-Key')
+                if key and hasattr(request, 'body'):
+                    body_hash = hashlib.sha256(request.body or b'').hexdigest()
+                    with transaction.atomic():
+                        obj, _ = IdempotencyKey.objects.get_or_create(key=key, request_hash=body_hash)
+                        if hasattr(response, 'content'):
                             payload = response.content.decode('utf-8')
-                        except Exception:
-                            payload = ''
-
-                        obj.request_hash = body_hash
-                        obj.response_body = payload
-                        obj.status_code = response.status_code
-                        obj.save()
+                            obj.response_body = payload
+                            obj.status_code = response.status_code
+                            obj.save()
         except Exception:
             """
                 TODO logger 추가

@@ -63,6 +63,9 @@ class TestIdempotencyMiddleware:
         # 1차 호출: 저장 + 실제 뷰 실행(RequestFactory의 HTTP_ 기능 활용 - 헤더변환)
         req1 = rf.post("/echo", data=body1, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k1")
         resp1 = mw(req1)
+        print()
+        print("(1)")
+        print(resp1)
         ## 캐시 미스(return None인 경우 뷰를 계속 진행, JsonResponse이면 뷰 미진행)
         assert resp1.status_code == 201
         assert calls["count"] == 1
@@ -70,6 +73,8 @@ class TestIdempotencyMiddleware:
         # DB 저장 확인
         h1 = hashlib.sha256(body1.encode("utf-8")).hexdigest()
         row = IdempotencyKey.objects.get(key="k1")
+        print(row)
+        print(row.__dict__)
         assert row.request_hash == h1
         assert row.status_code == 201
         assert '"ok": true' in row.response_body
