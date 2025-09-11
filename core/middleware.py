@@ -52,24 +52,37 @@ class TenantMiddleware:
         return self.get_response(request)
 
 class IdempotencyMiddleware(MiddlewareMixin):
+    ## 멱등성이 보장되는 Methods
     SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
 
     def process_request(self, request):
         if request.method in self.SAFE_METHODS:
             return None
+        
         key = request.headers.get('Idempotency-Key')
         if not key:
-            return None
-        body_bytes = request.body or b''
-        body_hash = hashlib.sha256(body_bytes).hexdigest()
-        found = IdempotencyKey.objects.filter(key=key, request_hash=body_hash).first()
-        if found and found.status_code:
-            # Return cached response
+            return JsonResponse(
+                {"detail": "Idempotency-Key header is required."},
+                status=400
+            )
+        ## 동일 key를 가짐에도 불구하고 body가 다르면 다른 요청으로 처리
+        body_hash = hashlib.sha256(request.body or b'').hexdigest()
+    
+        existing = IdempotencyKey.objects.filter(key=key).first()
+        if existing and existing.request_hash != body_hash:
+            return JsonResponse(
+                {"detail": "Idempotency-Key reuse with different request body."},
+                status=409
+            )
+        elif existing and existing.request_hash == body_hash:
             try:
-                data = json.loads(found.response_body)
+                data = json.loads(existing.response_body)
             except Exception:
                 data = {'detail': 'OK'}
-            return JsonResponse(data, status=found.status_code, safe=isinstance(data, dict))
+            return JsonResponse(data, status=existing.status_code, safe=isinstance(data, dict))
+        
+        else:
+            return None
 
     def process_response(self, request, response):
         try:
@@ -91,5 +104,5 @@ class IdempotencyMiddleware(MiddlewareMixin):
                             obj.status_code = response.status_code
                             obj.save()
         except Exception:
-            pass
+            print("idempotency persistence failed")
         return response
