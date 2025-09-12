@@ -82,13 +82,9 @@ class IdempotencyMiddleware(MiddlewareMixin):
                 existing = None
 
 
-            ## 동일 key를 가짐에도 불구하고 body가 다르면 다른 요청으로 처리
+            ## 동일 key를 가지면서 body가 동일하면 중복 request로 에러 처리
             body_hash = hashlib.sha256(request.body or b'').hexdigest()
-            if existing and existing.request_hash != body_hash:
-                return JsonResponse(
-                    {"detail": "Idempotency-Key reuse with different request body."},
-                    status=409
-                )
+            
             if existing and existing.status_code and existing.request_hash == body_hash:
                 request._idemp_cache_hit = True
                 try:

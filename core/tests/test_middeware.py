@@ -63,9 +63,6 @@ class TestIdempotencyMiddleware:
         # 1차 호출: 저장 + 실제 뷰 실행(RequestFactory의 HTTP_ 기능 활용 - 헤더변환)
         req1 = rf.post("/echo", data=body1, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k1")
         resp1 = mw(req1)
-        print()
-        print("(1)")
-        print(resp1)
         ## 캐시 미스(return None인 경우 뷰를 계속 진행, JsonResponse이면 뷰 미진행)
         assert resp1.status_code == 201
         assert calls["count"] == 1
@@ -73,8 +70,6 @@ class TestIdempotencyMiddleware:
         # DB 저장 확인
         h1 = hashlib.sha256(body1.encode("utf-8")).hexdigest()
         row = IdempotencyKey.objects.get(key="k1")
-        print(row)
-        print(row.__dict__)
         assert row.request_hash == h1
         assert row.status_code == 201
         assert '"ok": true' in row.response_body
@@ -87,33 +82,29 @@ class TestIdempotencyMiddleware:
         data = json.loads(resp2.content.decode("utf-8"))
         assert data["ok"] is True
 
-#     def test_post_with_same_key_but_different_body_does_not_reuse(self, rf, db):
-#         """
-#         현재 모델에서 key가 unique=True라서,
-#         같은 키에 다른 바디를 보내면 새 레코드가 저장되지 못하고(무결성 오류 -> except로 넘어가며 무시됨),
-#         결과적으로 '멱등성 캐시'는 첫 바디 기준으로만 남는다.
-#         => 이 동작을 테스트로 명시해 둔다.
-#         """
-#         from core.models import IdempotencyKey
-#         mw, calls = self._mw_with_counting_view()
+    def test_post_with_same_key_but_different_body_does_not_reuse(self, rf, db):
+        """
+            key가 unique=True 임으로 '멱등성 캐시'는 첫 바디 기준으로만 남는다.
+        """
+        from core.models import IdempotencyKey
+        mw, calls = self._mw_with_counting_view()
 
-#         body1 = json.dumps({"x": 1})
-#         body2 = json.dumps({"x": 2})
+        body1 = json.dumps({"x": 1})
+        body2 = json.dumps({"x": 2})
 
-#         # 최초 요청
-#         req1 = rf.post("/echo", data=body1, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k2")
-#         resp1 = mw(req1)
-#         assert resp1.status_code == 201
-#         assert calls["count"] == 1
+        # 최초 요청
+        req1 = rf.post("/echo", data=body1, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k2")
+        resp1 = mw(req1)
+        assert resp1.status_code == 201
+        assert calls["count"] == 1
 
-#         # 다른 바디지만 같은 키
-#         req2 = rf.post("/echo", data=body2, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k2")
-#         resp2 = mw(req2)
-#         assert resp2.status_code == 201
-#         assert calls["count"] == 2  # 캐시 미적용, 실제 뷰 재호출
+        # 다른 바디지만 같은 키
+        req2 = rf.post("/echo", data=body2, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k2")
+        resp2 = mw(req2)
+        assert resp2.status_code == 201
+        assert calls["count"] == 2  # 캐시 미적용, 실제 뷰 재호출
 
-#         # 여전히 레코드는 1개(첫 바디 hash만 저장됨)
-#         assert IdempotencyKey.objects.filter(key="k2").count() == 1
+        assert IdempotencyKey.objects.filter(key="k2").count() == 1
 
 #     def test_safe_methods_are_ignored(self, rf, db):
 #         mw, calls = self._mw_with_counting_view()
