@@ -106,13 +106,13 @@ class TestIdempotencyMiddleware:
 
         assert IdempotencyKey.objects.filter(key="k2").count() == 1
 
-#     def test_safe_methods_are_ignored(self, rf, db):
-#         mw, calls = self._mw_with_counting_view()
-#         # GET은 미들웨어 스킵
-#         req = rf.get("/echo", HTTP_IDEMPOTENCY_KEY="k3")
-#         resp = mw(req)
-#         assert resp.status_code == 201
-#         assert calls["count"] == 1
+    def test_safe_methods_are_ignored(self, rf, db):
+        mw, calls = self._mw_with_counting_view()
+        # GET은 미들웨어 스킵
+        req = rf.get("/echo", HTTP_IDEMPOTENCY_KEY="k3")
+        resp = mw(req)
+        assert resp.status_code == 201
+        assert calls["count"] == 1
 
 #     def test_no_key_header_behaves_normally(self, rf, db):
 #         mw, calls = self._mw_with_counting_view()
