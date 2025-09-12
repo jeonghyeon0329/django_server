@@ -114,9 +114,9 @@ class TestIdempotencyMiddleware:
         assert resp.status_code == 201
         assert calls["count"] == 1
 
-#     def test_no_key_header_behaves_normally(self, rf, db):
-#         mw, calls = self._mw_with_counting_view()
-#         req = rf.post("/echo", data=json.dumps({"a": 1}), content_type="application/json")
-#         resp = mw(req)
-#         assert resp.status_code == 201
-#         assert calls["count"] == 1
+    def test_no_key_header_behaves_normally(self, rf, db):
+        mw, calls = self._mw_with_counting_view()
+        req = rf.post("/echo", data=json.dumps({"a": 1}), content_type="application/json")
+        resp = mw(req)
+        assert resp.status_code == 400 ## key가 없으면 400에러
+        assert calls["count"] == 0
