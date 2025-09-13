@@ -24,21 +24,21 @@ def test_idempotency_status_code_constraint_blocks_invalid():
             response_body="{}",
         )
 
-# @pytest.mark.django_db
-# def test_outbox_defaults_and_protect(tenant):
-#     from core.models import Outbox, Tenant
-#     ev = Outbox.objects.create(
-#         tenant=tenant,
-#         event_name="user.created",
-#         payload={"id": 1},
-#     )
-#     assert ev.published is False
+@pytest.mark.django_db
+def test_outbox_defaults_and_protect(tenant):
+    from core.models import Outbox, Tenant
+    ev = Outbox.objects.create(
+        tenant=tenant,
+        event_name="user.created",
+        payload={"id": 1},
+    )
+    assert ev.published is False
 
-#     # Tenant가 참조되는 동안은 삭제 PROTECT
-#     with pytest.raises(ProtectedError):
-#         tenant.delete()
+    # Tenant가 fk로 참조되고 있기 때문에 tenant를 삭제하려고 하면 에러 발생
+    with pytest.raises(ProtectedError):
+        tenant.delete()
 
-# @pytest.mark.django_db
-# def test_tenant_str_and_indexes(tenant):
-#     # __str__ 확인 정도
-#     assert str(tenant) == tenant.code
+## tenant model return은 self.code로 고정
+@pytest.mark.django_db
+def test_tenant_str_and_indexes(tenant):
+    assert str(tenant) == tenant.code
