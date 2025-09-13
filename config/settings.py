@@ -28,6 +28,8 @@ DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', cast=Csv())
 
+AUTH_USER_MODEL = "accounts.User" ## user custom
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -39,6 +41,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders', ## post api가 OPTIONS에서 종료되는 현상 방지
     'core',
+    'accounts',
 ]
 
 MIDDLEWARE = [

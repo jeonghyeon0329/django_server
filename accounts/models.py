@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
+from django.conf import settings
 
 class User(AbstractUser):
     is_email_verified = models.BooleanField(default=False, db_index=True)
@@ -42,7 +43,7 @@ class Membership(models.Model):
             models.UniqueConstraint(fields=["user", "tenant"], name="uniq_membership_user_tenant"),
         ]
         indexes = [
-            models.Index(fields=["tenant", "code"]),
+            models.Index(fields=["tenant", "is_active", "created_at"], name="mship_tenant_active_idx"),
         ]
 
     def __str__(self):
