@@ -59,11 +59,23 @@ MIDDLEWARE = [
 
 ## Middleware에서 검사하는 url 예외 생성
 TENANT_EXEMPT_PATHS = [
+    r"^/accounts/",
     r"^/admin/",
-    # r"^/static/",
-    # r"^/media/",
+    r"^/static/",
+    r"^/favicon\.ico$",
+    r"^/media/",
     r"^/health/?$",
 ]
+
+IDEMPOTENCY_EXEMPT_PATHS = [
+    r"^/accounts/login/?$",
+    r"^/accounts/logout/?$",
+    r"^/admin/",
+    r"^/static/",
+    r"^/favicon\.ico$",
+]
+REQUIRE_IDEMPOTENCY_ONLY_UNDER = r"^/api/"
+
 
 ## post api가 OPTIONS에서 종료되는 현상 방지
 CORS_ALLOW_ALL_ORIGINS = False
