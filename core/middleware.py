@@ -1,6 +1,7 @@
 import hashlib, json
 from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
+from django.template.response import TemplateResponse
 from django.db import transaction, IntegrityError
 from django.conf import settings
 from django.utils.text import slugify
@@ -10,9 +11,14 @@ from django.utils import timezone
 import re
 
 EXEMPT_PATTERNS = [re.compile(p) for p in getattr(settings, "TENANT_EXEMPT_PATHS", [])]
+IDEMPOTENCY_EXEMPT_PATTERNS = [re.compile(p) for p in getattr(settings, "IDEMPOTENCY_EXEMPT_PATHS", [])]
+API_SCOPE_PATTERN = re.compile(getattr(settings, "REQUIRE_IDEMPOTENCY_ONLY_UNDER", r"^/"))
 
 def _is_exempt(path: str) -> bool:
     return any(p.match(path) for p in EXEMPT_PATTERNS)
+
+def _idem_exempt(path: str) -> bool:
+    return any(p.match(path) for p in IDEMPOTENCY_EXEMPT_PATTERNS)
 
 class TenantMiddleware:
     def __init__(self, get_response):
@@ -57,18 +63,32 @@ class IdempotencyMiddleware(MiddlewareMixin):
     SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'} ## 멱등성이 보장되는 Methods
     TTL = timedelta(seconds=60) ## 응답 만료 시간
 
+    def _get_key(self, request):
+        # 쿼리스트링은 보안상 제거
+        return (
+            request.headers.get("Idempotency-Key")
+            or request.POST.get("Idempotency-Key")
+        )
+
+
     def process_request(self, request):
         if request.method in self.SAFE_METHODS:
             return None
         
-        try:
-            key = request.headers.get('Idempotency-Key')
-            if not key:
-                return JsonResponse(
-                    {"detail": "Idempotency-Key header is required."},
-                    status=400
-                )
-            
+        if _idem_exempt(request.path_info):
+            return None
+        
+        if not API_SCOPE_PATTERN.match(request.path_info):
+            return None
+
+        key = self._get_key(request)
+        if not key:
+            return JsonResponse(
+                {"detail": "Idempotency-Key header is required."}, 
+                status=400
+            )
+
+        try:            
             ## 응답 만료시간
             existing = IdempotencyKey.objects.filter(key=key).first()
             if existing and timezone.now() - existing.created_at > self.TTL:
@@ -107,58 +127,79 @@ class IdempotencyMiddleware(MiddlewareMixin):
         try:
             if request.method in self.SAFE_METHODS:
                 return response
+                        
+            if _idem_exempt(getattr(request, "path_info", "/")):
+                return response
             
-            else:
-                key = request.headers.get('Idempotency-Key')
-                if not key: return response
+            if not API_SCOPE_PATTERN.match(getattr(request, "path_info", "/")):
+                return response
 
-                if getattr(request, "_idemp_cache_hit", False):
+            key = self._get_key(request)
+            if not key or getattr(request, "_idemp_cache_hit", False):
+                return response
+
+            status = getattr(response, "status_code", 200)
+            if 400 <= status <= 599:
+                return response
+
+            body_hash = getattr(request, "_idemp_body_hash", None)
+            if body_hash is None:
+                try:
+                    body_hash = hashlib.sha256((request.body or b"")).hexdigest()
+                except Exception:
                     return response
 
-                status = getattr(response, "status_code", 200)
-                if 400 <= status <= 599:
+
+            ## template폼을 활용할때 렌더링 되기 전에 .content가 empty
+            if isinstance(response, TemplateResponse) and not response.is_rendered:
+                response.render()
+
+            payload_bytes = getattr(response, "content", None)
+            if payload_bytes is None and hasattr(response, "rendered_content"):
+                payload_bytes = response.rendered_content
+
+            if payload_bytes is None:
+                return response
+
+            try:
+                payload = payload_bytes.decode("utf-8")
+            except Exception:
+                payload = ""
+
+
+
+            with transaction.atomic():
+                obj, created = IdempotencyKey.objects.get_or_create(
+                    key=key,
+                    defaults={"request_hash": body_hash}
+                )
+                if (not created) and obj.request_hash != body_hash:
                     return response
 
-
-                body_hash = getattr(request, "_idemp_body_hash", None)
-                if body_hash is None:
+                
+                payload_bytes = None
+                if hasattr(response, "content"):           # Django HttpResponse/JsonResponse
+                    payload_bytes = response.content
+                elif hasattr(response, "rendered_content"): # DRF Response
                     try:
-                        body_hash = hashlib.sha256((request.body or b"")).hexdigest()
+                        response.render()
                     except Exception:
-                        return response
-                    
-                with transaction.atomic():
-                    obj, created = IdempotencyKey.objects.get_or_create(
-                        key=key,
-                        defaults={"request_hash": body_hash}
-                    )
-                    if (not created) and obj.request_hash != body_hash:
-                        return response
+                        pass
+                    payload_bytes = getattr(response, "rendered_content", None)
 
-                    
-                    payload_bytes = None
-                    if hasattr(response, "content"):           # Django HttpResponse/JsonResponse
-                        payload_bytes = response.content
-                    elif hasattr(response, "rendered_content"): # DRF Response
-                        try:
-                            response.render()
-                        except Exception:
-                            pass
-                        payload_bytes = getattr(response, "rendered_content", None)
+                if payload_bytes is None:
+                    return response
 
-                    if payload_bytes is None:
-                        return response
+                try:
+                    payload = payload_bytes.decode("utf-8")
+                except Exception:
+                    payload = ""
 
-                    try:
-                        payload = payload_bytes.decode("utf-8")
-                    except Exception:
-                        payload = ""
-
-                    obj.request_hash = body_hash
-                    obj.response_body = payload
-                    obj.status_code = status
-                    # obj.created_at = timezone.now() ## time update(self.TTL)
-                    obj.save()
+                obj.request_hash = body_hash
+                obj.response_body = payload
+                obj.status_code = status
+                # obj.created_at = timezone.now() ## time update(self.TTL)
+                obj.save()
 
         except Exception:
             """
