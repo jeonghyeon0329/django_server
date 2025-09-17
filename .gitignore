@@ -1,4 +1,6 @@
 .env
 docker*
 django-venv
-django_venv
+django_venv/
+*.pyc
+__pycache__/
