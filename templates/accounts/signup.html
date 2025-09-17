@@ -1,0 +1,17 @@
+{% load static %}
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>회원가입</title></head>
+<body>
+  <h1>회원가입</h1>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <label>
+      <input type="checkbox" name="agree_terms" required>
+      이용약관에 동의합니다.
+    </label>
+    <button type="submit">가입</button>
+  </form>
+</body>
+</html>
