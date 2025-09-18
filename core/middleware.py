@@ -2,7 +2,7 @@ import hashlib, json
 from django.http import JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from django.template.response import TemplateResponse
-from django.db import transaction, IntegrityError
+from django.db import transaction
 from django.conf import settings
 from django.utils.text import slugify
 from .models import Tenant, IdempotencyKey
