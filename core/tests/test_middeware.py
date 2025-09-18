@@ -54,6 +54,9 @@ class TestIdempotencyMiddleware:
         """
             API를 2번 호출했을때 COUNT가 변화하는지 검사한다.
         """
+
+        path = "/api/accounts/echo"
+
         from core.models import IdempotencyKey
         mw, calls = self._mw_with_counting_view()
 
@@ -61,9 +64,8 @@ class TestIdempotencyMiddleware:
         body1 = json.dumps(payload)
 
         # 1차 호출: 저장 + 실제 뷰 실행(RequestFactory의 HTTP_ 기능 활용 - 헤더변환)
-        req1 = rf.post("/echo", data=body1, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k1")
+        req1 = rf.post(path, data=body1, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k1")
         resp1 = mw(req1)
-        ## 캐시 미스(return None인 경우 뷰를 계속 진행, JsonResponse이면 뷰 미진행)
         assert resp1.status_code == 201
         assert calls["count"] == 1
         
@@ -72,10 +74,10 @@ class TestIdempotencyMiddleware:
         row = IdempotencyKey.objects.get(key="k1")
         assert row.request_hash == h1
         assert row.status_code == 201
-        assert '"ok": true' in row.response_body
+        assert json.loads(row.response_body)["ok"] is True
 
         # 2차 호출 (동일 바디/키): 캐시 재사용, 뷰 미호출
-        req2 = rf.post("/echo", data=body1, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k1")
+        req2 = rf.post(path, data=body1, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k1")
         resp2 = mw(req2)
         assert resp2.status_code == 201
         assert calls["count"] == 1  # 증가하지 않음 (캐시 히트)
@@ -86,6 +88,9 @@ class TestIdempotencyMiddleware:
         """
             key가 unique=True 임으로 '멱등성 캐시'는 첫 바디 기준으로만 남는다.
         """
+
+        path = "/api/accounts/echo"
+
         from core.models import IdempotencyKey
         mw, calls = self._mw_with_counting_view()
 
@@ -93,13 +98,13 @@ class TestIdempotencyMiddleware:
         body2 = json.dumps({"x": 2})
 
         # 최초 요청
-        req1 = rf.post("/echo", data=body1, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k2")
+        req1 = rf.post(path, data=body1, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k2")
         resp1 = mw(req1)
         assert resp1.status_code == 201
         assert calls["count"] == 1
 
         # 다른 바디지만 같은 키
-        req2 = rf.post("/echo", data=body2, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k2")
+        req2 = rf.post(path, data=body2, content_type="application/json", HTTP_IDEMPOTENCY_KEY="k2")
         resp2 = mw(req2)
         assert resp2.status_code == 201
         assert calls["count"] == 2  # 캐시 미적용, 실제 뷰 재호출
@@ -116,7 +121,7 @@ class TestIdempotencyMiddleware:
 
     def test_no_key_header_behaves_normally(self, rf, db):
         mw, calls = self._mw_with_counting_view()
-        req = rf.post("/echo", data=json.dumps({"a": 1}), content_type="application/json")
+        req = rf.post("/api/accounts/echo", data=json.dumps({"a": 1}), content_type="application/json")
         resp = mw(req)
-        assert resp.status_code == 400 ## key가 없으면 400에러
+        assert resp.status_code == 400
         assert calls["count"] == 0

@@ -71,11 +71,13 @@ APPEND_SLASH = False ## '/' redirect 종료
 IDEMPOTENCY_EXEMPT_PATHS = [
     r"^/accounts/login/?$",
     r"^/accounts/logout/?$",
+    r"^/api/accounts/token(/|$)",
+    r"^/api/accounts/token/refresh(/|$)",
     r"^/admin/",
     r"^/static/",
     r"^/favicon\.ico$",
 ]
-REQUIRE_IDEMPOTENCY_ONLY_UNDER = r"^/api/accounts/^"
+REQUIRE_IDEMPOTENCY_ONLY_UNDER = r"^/api/accounts(/|$)" 
 
 
 ## post api가 OPTIONS에서 종료되는 현상 방지
