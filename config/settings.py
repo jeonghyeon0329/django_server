@@ -66,6 +66,7 @@ TENANT_EXEMPT_PATHS = [
     r"^/media/",
     r"^/health/?$",
 ]
+APPEND_SLASH = False ## '/' redirect 종료
 
 IDEMPOTENCY_EXEMPT_PATHS = [
     r"^/accounts/login/?$",
@@ -74,7 +75,7 @@ IDEMPOTENCY_EXEMPT_PATHS = [
     r"^/static/",
     r"^/favicon\.ico$",
 ]
-REQUIRE_IDEMPOTENCY_ONLY_UNDER = r"^/api/"
+REQUIRE_IDEMPOTENCY_ONLY_UNDER = r"^/api/accounts/^"
 
 
 ## post api가 OPTIONS에서 종료되는 현상 방지

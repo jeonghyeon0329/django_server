@@ -77,7 +77,7 @@ class IdempotencyMiddleware(MiddlewareMixin):
         
         if _idem_exempt(request.path_info):
             return None
-        
+    
         if not API_SCOPE_PATTERN.match(request.path_info):
             return None
 
@@ -131,7 +131,7 @@ class IdempotencyMiddleware(MiddlewareMixin):
             if _idem_exempt(getattr(request, "path_info", "/")):
                 return response
             
-            if not API_SCOPE_PATTERN.match(getattr(request, "path_info", "/")):
+            if not API_SCOPE_PATTERN.match(request.path_info):
                 return response
 
             key = self._get_key(request)
