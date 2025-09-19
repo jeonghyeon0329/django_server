@@ -30,5 +30,10 @@ pip install -r requirements.txt
 - TTL(예: 60초) 이후 캐시 무효화(옵션)
 - 멱등키가 없는 경우 400에러
 
+파일시스템(MinIO)
+- s3 api 기준 : 추후 AWS S3/Wasabi 등으로 엔드포인트 교체
+- 대용량에 강함 : 클라이언트와 스토리지 직접 전송(서버는 서명만)
+- docker & docker-compose를 활용하여 진행
+
 pytest 기반 테스트
 - 미들웨어 동작 및 회귀 테스트
