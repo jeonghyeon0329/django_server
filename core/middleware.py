@@ -10,15 +10,13 @@ from datetime import timedelta
 from django.utils import timezone
 import re
 
-EXEMPT_PATTERNS = [re.compile(p) for p in getattr(settings, "TENANT_EXEMPT_PATHS", [])]
-IDEMPOTENCY_EXEMPT_PATTERNS = [re.compile(p) for p in getattr(settings, "IDEMPOTENCY_EXEMPT_PATHS", [])]
-API_SCOPE_PATTERN = re.compile(getattr(settings, "REQUIRE_IDEMPOTENCY_ONLY_UNDER", r"^/"))
-
 def _is_exempt(path: str) -> bool:
+    EXEMPT_PATTERNS = [re.compile(p) for p in getattr(settings, "TENANT_EXEMPT_PATHS", [])]
     return any(p.match(path) for p in EXEMPT_PATTERNS)
 
-def _idem_exempt(path: str) -> bool:
-    return any(p.match(path) for p in IDEMPOTENCY_EXEMPT_PATTERNS)
+def _idem_included(path: str) -> bool:
+    INCLUDE_PATTERNS = [re.compile(p) for p in getattr(settings, "IDEMPOTENCY_INCLUDE_PATHS", [])]
+    return any(p.match(path) for p in INCLUDE_PATTERNS)
 
 class TenantMiddleware:
     def __init__(self, get_response):
@@ -75,10 +73,7 @@ class IdempotencyMiddleware(MiddlewareMixin):
         if request.method in self.SAFE_METHODS:
             return None
         
-        if _idem_exempt(request.path_info):
-            return None
-    
-        if not API_SCOPE_PATTERN.match(request.path_info):
+        if not _idem_included(request.path_info):
             return None
 
         key = self._get_key(request)
@@ -128,10 +123,7 @@ class IdempotencyMiddleware(MiddlewareMixin):
             if request.method in self.SAFE_METHODS:
                 return response
                         
-            if _idem_exempt(getattr(request, "path_info", "/")):
-                return response
-            
-            if not API_SCOPE_PATTERN.match(request.path_info):
+            if not _idem_included(getattr(request, "path_info", "/")):
                 return response
 
             key = self._get_key(request)
@@ -165,8 +157,6 @@ class IdempotencyMiddleware(MiddlewareMixin):
                 payload = payload_bytes.decode("utf-8")
             except Exception:
                 payload = ""
-
-
 
             with transaction.atomic():
                 obj, created = IdempotencyKey.objects.get_or_create(

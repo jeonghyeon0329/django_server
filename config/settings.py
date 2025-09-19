@@ -57,6 +57,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',    
 ]
 
+APPEND_SLASH = False ## '/' redirect 종료
+
 ## Middleware에서 검사하는 url 예외 생성
 TENANT_EXEMPT_PATHS = [
     r"^/accounts/",
@@ -66,18 +68,10 @@ TENANT_EXEMPT_PATHS = [
     r"^/media/",
     r"^/health/?$",
 ]
-APPEND_SLASH = False ## '/' redirect 종료
 
-IDEMPOTENCY_EXEMPT_PATHS = [
-    r"^/accounts/login/?$",
-    r"^/accounts/logout/?$",
-    r"^/api/accounts/token(/|$)",
-    r"^/api/accounts/token/refresh(/|$)",
-    r"^/admin/",
-    r"^/static/",
-    r"^/favicon\.ico$",
+IDEMPOTENCY_INCLUDE_PATHS = [
+    r"/api/accounts/echo",
 ]
-REQUIRE_IDEMPOTENCY_ONLY_UNDER = r"^/api/accounts(/|$)" 
 
 
 ## post api가 OPTIONS에서 종료되는 현상 방지
