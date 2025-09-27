@@ -26,7 +26,7 @@ SECRET_KEY = config('DJANGO_SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', cast=Csv())
+ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='*', cast=Csv())
 
 # AUTH_USER_MODEL = "hr_system.User" ## user custom
 
