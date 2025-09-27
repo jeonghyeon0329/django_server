@@ -1,8 +1,43 @@
-.env
-docker*
-venv/
-*.pyc
+# --- Secrets / Env ---
+**/.env
+*.env
+.envrc
+.python-version
+
+# --- Python / Django ---
 __pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.dist-info/
+build/
+dist/
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+db.sqlite3
+
+# --- Virtualenv ---
+venv/
+.venv/
+
+# --- Editors / OS ---
+.DS_Store
+.idea/
+.vscode/
+
+# --- Logs ---
+*.log
+logs/
+gunicorn*.log
+
+# --- Docker ---
+docker-data/
 
 ####
 notepad.py
