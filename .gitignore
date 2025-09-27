@@ -3,3 +3,6 @@ docker*
 venv/
 *.pyc
 __pycache__/
+
+####
+notepad.py
