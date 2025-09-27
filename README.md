@@ -19,4 +19,6 @@ pip install -r requirements.txt
 ✨ 주요 기능
 
 1. core_system : 멱등성, 테넌트 검증
+ - accounts(APP) : 사용계획 없음(추후 활용)
 2. hr_system : 인사관리팀
+- accounts(APP) : 유저 정보 관리(로그인, 회원정보 수정)
