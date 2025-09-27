@@ -28,7 +28,7 @@ DEBUG = config('DJANGO_DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', cast=Csv())
 
-# AUTH_USER_MODEL = "accounts.User" ## user custom
+AUTH_USER_MODEL = "accounts.User" ## user custom
 APPEND_SLASH = False ## '/' redirect 종료
 
 # Application definition

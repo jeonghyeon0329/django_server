@@ -9,7 +9,7 @@ load_dotenv()
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hr_system.settings')
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core_system.settings')
 
     try:
         if operator.eq(len(sys.argv), 2) and operator.eq(sys.argv[1], "runserver"):
